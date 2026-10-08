@@ -1,0 +1,270 @@
+[33mcommit 0da2ab50bef740b72b874b7247173839d85ff50c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m
+Author: noviandf <noviandf10@gmail.com>
+Date:   Thu Oct 8 16:00:24 2026 +0700
+
+    Deploy MVP Finance Tracker
+
+[1mdiff --git a/app/page.tsx b/app/page.tsx[m
+[1mindex c887311..aa48838 100644[m
+[1m--- a/app/page.tsx[m
+[1m+++ b/app/page.tsx[m
+[36m@@ -1,69 +1,237 @@[m
+[31m-import Image from "next/image";[m
+[32m+[m[32m'use client'[m
+[32m+[m[32mimport { useState } from 'react';[m
+ [m
+[31m-export default function Home() {[m
+[31m-  return ([m
+[31m-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">[m
+[31m-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">[m
+[31m-        <Image[m
+[31m-          className="dark:invert h-5 w-[100px]"[m
+[31m-          src="/next.svg"[m
+[31m-          alt="Next.js logo"[m
+[31m-          width={100}[m
+[31m-          height={20}[m
+[31m-          priority[m
+[31m-        />[m
+[31m-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">[m
+[31m-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">[m
+[31m-            To get started, edit the{" "}[m
+[31m-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">[m
+[31m-              page.tsx[m
+[31m-            </code>{" "}[m
+[31m-            file.[m
+[31m-          </h1>[m
+[31m-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">[m
+[31m-            Looking for a starting point or more instructions? Head over to{" "}[m
+[31m-            <a[m
+[31m-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"[m
+[31m-              className="font-medium text-zinc-950 dark:text-zinc-50"[m
+[31m-            >[m
+[31m-              Templates[m
+[31m-            </a>{" "}[m
+[31m-            or the{" "}[m
+[31m-            <a[m
+[31m-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"[m
+[31m-              className="font-medium text-zinc-950 dark:text-zinc-50"[m
+[31m-            >[m
+[31m-              Learning[m
+[31m-            </a>{" "}[m
+[31m-            center.[m
+[31m-          </p>[m
+[32m+[m[32mexport default function TransactionForm() {[m
+[32m+[m[32m  // State untuk Keamanan (PIN)[m
+[32m+[m[32m  const [isAuth, setIsAuth] = useState(false);[m
+[32m+[m[32m  const [pinInput, setPinInput] = useState('');[m
+[32m+[m
+[32m+[m[32m  // State Form Transaksi[m
+[32m+[m[32m  const [type, setType] = useState('outcome');[m
+[32m+[m[32m  const [amount, setAmount] = useState('');[m
+[32m+[m[32m  const [category, setCategory] = useState('');[m
+[32m+[m[32m  const [accountFrom, setAccountFrom] = useState('');[m
+[32m+[m[32m  const [accountTo, setAccountTo] = useState('');[m
+[32m+[m[32m  const [notes, setNotes] = useState('');[m
+[32m+[m[32m  const [status, setStatus] = useState('');[m
+[32m+[m
+[32m+[m[32m  // Fungsi Cek PIN[m
+[32m+[m[32m  const handleLogin = (e: React.FormEvent) => {[m
+[32m+[m[32m    e.preventDefault();[m
+[32m+[m[32m    if (pinInput === process.env.NEXT_PUBLIC_APP_PIN) {[m
+[32m+[m[32m      setIsAuth(true);[m
+[32m+[m[32m    } else {[m
+[32m+[m[32m      alert('❌ PIN Salah!');[m
+[32m+[m[32m      setPinInput('');[m
+[32m+[m[32m    }[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  // Fungsi Simpan Transaksi (Tetap sama seperti sebelumnya)[m
+[32m+[m[32m  const handleSubmit = async (e: React.FormEvent) => {[m
+[32m+[m[32m    e.preventDefault();[m
+[32m+[m[32m    setStatus('Menyimpan...');[m
+[32m+[m[32m    const payload = { type, amount, category, account_from: accountFrom, account_to: accountTo, notes };[m
+[32m+[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      const response = await fetch(process.env.NEXT_PUBLIC_GAS_URL as string, {[m
+[32m+[m[32m        method: 'POST',[m
+[32m+[m[32m        headers: { 'Content-Type': 'text/plain;charset=utf-8' },[m
+[32m+[m[32m        body: JSON.stringify(payload)[m
+[32m+[m[32m      });[m
+[32m+[m[32m      const result = await response.json();[m[41m [m
+[32m+[m[32m      if (result.status === 200) {[m
+[32m+[m[32m        setStatus('✅ Berhasil disimpan!');[m
+[32m+[m[32m        setAmount(''); setNotes('');[m
+[32m+[m[32m        setTimeout(() => setStatus(''), 3000);[m
+[32m+[m[32m      } else {[m
+[32m+[m[32m        setStatus(`❌ Gagal: ${result.message}`);[m
+[32m+[m[32m      }[m
+[32m+[m[32m    } catch (error) {[m
+[32m+[m[32m      setStatus('❌ Gagal menghubungi server.');[m
+[32m+[m[32m    }[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  // UI LAYAR LOGIN (Jika belum masuk)[m
+[32m+[m[32m  if (!isAuth) {[m
+[32m+[m[32m    return ([m
+[32m+[m[32m      <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4 font-sans">[m
+[32m+[m[32m        <form onSubmit={handleLogin} className="w-full max-w-xs bg-[#111111] border border-gray-800 rounded-2xl shadow-2xl p-6 space-y-4">[m
+[32m+[m[32m          <h1 className="text-xl font-bold text-white text-center">Gembok Aplikasi</h1>[m
+[32m+[m[32m          <input[m[41m [m
+[32m+[m[32m            type="password" inputMode="numeric" placeholder="Masukkan PIN"[m[41m [m
+[32m+[m[32m            value={pinInput} onChange={(e) => setPinInput(e.target.value)}[m[41m [m
+[32m+[m[32m            className="w-full px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-xl text-center text-white tracking-widest focus:outline-none focus:border-blue-500"[m[41m [m
+[32m+[m[32m            autoFocus required[m[41m [m
+[32m+[m[32m          />[m
+[32m+[m[32m          <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition-all">Buka</button>[m
+[32m+[m[32m        </form>[m
+[32m+[m[32m      </main>[m
+[32m+[m[32m    );[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32mreturn ([m
+[32m+[m[32m    <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4 font-sans">[m
+[32m+[m[32m      <div className="w-full max-w-md bg-[#111111] border border-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">[m
+[32m+[m[41m        [m
+[32m+[m[32m        <div className="mb-8 text-center">[m
+[32m+[m[32m          <h1 className="text-2xl font-bold text-white tracking-tight">Catat Transaksi</h1>[m
+[32m+[m[32m          <p className="text-gray-400 text-sm mt-1">Lacak pengeluaran dan pemasukanmu</p>[m
+         </div>[m
+[31m-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">[m
+[31m-          <a[m
+[31m-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"[m
+[31m-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"[m
+[31m-            target="_blank"[m
+[31m-            rel="noopener noreferrer"[m
+[31m-          >[m
+[31m-            <Image[m
+[31m-              className="dark:invert h-[14px] w-4"[m
+[31m-              src="/vercel.svg"[m
+[31m-              alt="Vercel logomark"[m
+[31m-              width={16}[m
+[31m-              height={14}[m
+[32m+[m
+[32m+[m[32m        <form onSubmit={handleSubmit} className="space-y-5">[m
+[32m+[m[41m          [m
+[32m+[m[32m          {/* Tipe Transaksi */}[m
+[32m+[m[32m          <div className="space-y-1">[m
+[32m+[m[32m            <label className="text-xs font-medium text-gray-400 ml-1">Jenis Transaksi</label>[m
+[32m+[m[32m            <select[m[41m [m
+[32m+[m[32m              value={type}[m[41m [m
+[32m+[m[32m              onChange={(e) => setType(e.target.value)}[m[41m [m
+[32m+[m[32m              className="w-full px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors appearance-none"[m
+[32m+[m[32m            >[m
+[32m+[m[32m              <option value="outcome">📉 Pengeluaran</option>[m
+[32m+[m[32m              <option value="income">📈 Pemasukan</option>[m
+[32m+[m[32m              <option value="transfer">🔄 Mutasi/Transfer</option>[m
+[32m+[m[32m            </select>[m
+[32m+[m[32m          </div>[m
+[32m+[m
+[32m+[m[32m          {/* Nominal */}[m
+[32m+[m[32m          <div className="space-y-1">[m
+[32m+[m[32m            <label className="text-xs font-medium text-gray-400 ml-1">Nominal</label>[m
+[32m+[m[32m            <div className="relative">[m
+[32m+[m[32m              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">Rp</span>[m
+[32m+[m[32m              <input[m[41m [m
+[32m+[m[32m                type="number"[m[41m [m
+[32m+[m[32m                placeholder="0"[m[41m [m
+[32m+[m[32m                value={amount}[m[41m [m
+[32m+[m[32m                onChange={(e) => setAmount(e.target.value)}[m[41m [m
+[32m+[m[32m                className="w-full pl-10 pr-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"[m[41m [m
+[32m+[m[32m                required[m[41m [m
+[32m+[m[32m              />[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m          </div>[m
+[32m+[m
+[32m+[m[32m       {/* Kategori Pengeluaran */}[m
+[32m+[m[32m          {type === 'outcome' && ([m
+[32m+[m[32m            <div className="space-y-1">[m
+[32m+[m[32m              <label className="text-xs font-medium text-gray-400 ml-1">Kategori Pengeluaran</label>[m
+[32m+[m[32m              <select[m[41m [m
+[32m+[m[32m                value={category}[m[41m [m
+[32m+[m[32m                onChange={(e) => setCategory(e.target.value)}[m[41m [m
+[32m+[m[32m                className="w-full px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-xl text-white focus:outline-none focus:border-red-500 transition-colors appearance-none"[m[41m [m
+[32m+[m[32m                required[m
+[32m+[m[32m              >[m
+[32m+[m[32m                <option value="" disabled hidden>Pilih Kategori...</option>[m
+[32m+[m[32m                <option value="Makan & Minum">Makan & Minum</option>[m
+[32m+[m[32m                <option value="Fashion & Apparel">Fashion & Apparel</option>[m
+[32m+[m[32m                <option value="Perawatan Diri">Perawatan Diri</option>[m
+[32m+[m[32m                <option value="Transportasi">Transportasi</option>[m
+[32m+[m[32m                <option value="Maintenance & Servis">Maintenance & Servis</option>[m
+[32m+[m[32m                <option value="Sosial & Relationship">Sosial & Relationship</option>[m
+[32m+[m[32m                <option value="Hobi & Olahraga">Hobi & Olahraga</option>[m
+[32m+[m[32m                <option value="Tagihan & Edukasi">Tagihan & Edukasi</option>[m
+[32m+[m[32m                <option value="Lain-lain">Lain-lain</option>[m
+[32m+[m[32m              </select>[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m          )}[m
+[32m+[m
+[32m+[m[32m          {/* Kategori Pemasukan */}[m
+[32m+[m[32m          {type === 'income' && ([m
+[32m+[m[32m            <div className="space-y-1">[m
+[32m+[m[32m              <label className="text-xs font-medium text-gray-400 ml-1">Kategori Pemasukan</label>[m
+[32m+[m[32m              <select[m[41m [m
+[32m+[m[32m                value={category}[m[41m [m
+[32m+[m[32m                onChange={(e) => setCategory(e.target.value)}[m[41m [m
+[32m+[m[32m                className="w-full px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-xl text-white focus:outline-none focus:border-green-500 transition-colors appearance-none"[m[41m [m
+[32m+[m[32m                required[m
+[32m+[m[32m              >[m
+[32m+[m[32m                <option value="" disabled hidden>Pilih Kategori...</option>[m
+[32m+[m[32m                <option value="Gaji">Gaji Bulanan</option>[m
+[32m+[m[32m                <option value="Hustle">Side Hustle</option>[m
+[32m+[m[32m                <option value="Bonus / THR">Bonus / THR</option>[m
+[32m+[m		[32m<option value="Investasi">Investasi / Airdrop</option>[m
+[32m+[m[32m                <option value="Pemasukan Lainnya">Pemasukan Lainnya</option>[m
+[32m+[m[32m              </select>[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m          )}[m
+[32m+[m
+[32m+[m[32m          {/* Akun Sumber */}[m
+[32m+[m[32m          {(type === 'outcome' || type === 'transfer') && ([m
+[32m+[m[32m            <div className="space-y-1">[m
+[32m+[m[32m              <label className="text-xs font-medium text-gray-400 ml-1">Sumber Dana</label>[m
+[32m+[m[32m              <select[m[41m [m
+[32m+[m[32m                value={accountFrom}[m[41m [m
+[32m+[m[32m                onChange={(e) => setAccountFrom(e.target.value)}[m[41m [m
+[32m+[m[32m                className="w-full px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-xl text-white focus:outline-none focus:border-red-500 transition-colors appearance-none"[m[41m [m
+[32m+[m[32m                required[m
+[32m+[m[32m              >[m
+[32m+[m[32m                <option value="" disabled hidden>Pilih Sumber Dana...</option>[m
+[32m+[m[32m                <option value="BCA">BCA</option>[m
+[32m+[m		[32m<option value="Neobank">Neobank</option>[m
+[32m+[m[32m                <option value="Gopay">Gopay</option>[m
+[32m+[m		[32m<option value="Superbank">Superbank</option>[m
+[32m+[m		[32m<option value="E-money">E-money</option>[m
+[32m+[m		[32m<option value="Seabank">Seabank</option>[m
+[32m+[m		[32m<option value="Shopeepay">Shopeepay</option>[m
+[32m+[m		[32m<option value="OVO">OVO</option>[m
+[32m+[m		[32m<option value="bluBCA">bluBCA</option>[m
+[32m+[m[32m                <option value="Tunai">Tunai</option>[m
+[32m+[m[32m              </select>[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m          )}[m
+[32m+[m
+[32m+[m[32m          {/* Akun Tujuan */}[m
+[32m+[m[32m          {(type === 'income' || type === 'transfer') && ([m
+[32m+[m[32m            <div className="space-y-1">[m
+[32m+[m[32m              <label className="text-xs font-medium text-gray-400 ml-1">Tujuan Dana</label>[m
+[32m+[m[32m              <select[m[41m [m
+[32m+[m[32m                value={accountTo}[m[41m [m
+[32m+[m[32m                onChange={(e) => setAccountTo(e.target.value)}[m[41m [m
+[32m+[m[32m                className="w-full px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-xl text-white focus:outline-none focus:border-green-500 transition-colors appearance-none"[m[41m [m
+[32m+[m[32m                required[m
+[32m+[m[32m              >[m
+[32m+[m[32m                <option value="" disabled hidden>Pilih Tujuan Dana...</option>[m
+[32m+[m[32m                 <option value="BCA">BCA</option>[m
+[32m+[m		[32m<option value="Neobank">Neobank</option>[m
+[32m+[m[32m                <option value="Gopay">Gopay</option>[m
+[32m+[m		[32m<option value="Superbank">Superbank</option>[m
+[32m+[m		[32m<option value="E-money">E-money</option>[m
+[32m+[m		[32m<option value="Seabank">Seabank</option>[m
+[32m+[m		[32m<option value="Shopeepay">Shopeepay</option>[m
+[32m+[m		[32m<option value="OVO">OVO</option>[m
+[32m+[m		[32m<option value="bluBCA">bluBCA</option>[m
+[32m+[m[32m                <option value="Tunai">Tunai</option>[m
+[32m+[m[32m              </select>[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m          )}[m
+[32m+[m
+[32m+[m[32m          {/* Catatan */}[m
+[32m+[m[32m          <div className="space-y-1">[
