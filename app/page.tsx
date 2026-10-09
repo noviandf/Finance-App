@@ -376,11 +376,11 @@ export default function FinanceApp() {
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                               ))}
                             </Pie>
-                            <Tooltip 
-                              formatter={(value: number) => `Rp ${value.toLocaleString('id-ID')}`}
-                              contentStyle={{ backgroundColor: '#111', borderColor: '#333', borderRadius: '8px', color: '#fff' }}
-                              itemStyle={{ color: '#fff' }}
-                            />
+                      	    <Tooltip 
+ 				formatter={(value: any) => `Rp ${Number(value).toLocaleString('id-ID')}`}
+ 				contentStyle={{ backgroundColor: '#111', borderColor: '#333', borderRadius: '8px', color: '#fff' }}
+ 				itemStyle={{ color: '#fff' }}
+			    />
                             <Legend wrapperStyle={{ fontSize: '12px', color: '#ccc' }} />
                           </PieChart>
                         </ResponsiveContainer>
