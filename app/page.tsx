@@ -7,6 +7,7 @@ export default function FinanceApp() {
   const [isAuth, setIsAuth] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [activeTab, setActiveTab] = useState('input');
+  const [loginError, setLoginError] = useState(''); // Tambahkan baris ini
 
   // State Form Transaksi
   const [type, setType] = useState('outcome');
@@ -23,18 +24,25 @@ export default function FinanceApp() {
   
   // State Filter Waktu (Default: Bulan Ini)
   const [filterPeriod, setFilterPeriod] = useState('this_month');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   // Palet Warna Grafik
   const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef'];
 
   // Fungsi Login
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (pinInput === process.env.NEXT_PUBLIC_APP_PIN) {
+const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault(); // Mencegah form HTML me-refresh halaman (log GET /?)
+    setLoginError(''); // Reset error setiap kali tombol ditekan
+    
+    const validPin = process.env.NEXT_PUBLIC_APP_PIN?.trim();
+    const inputPin = pinInput.trim();
+    
+    if (inputPin === validPin) {
       setIsAuth(true);
       fetchData(); 
     } else {
-      alert('❌ PIN Salah!');
+      setLoginError('❌ PIN Salah! Cek kembali.'); // Tampilkan teks di layar, BUKAN alert
       setPinInput('');
     }
   };
@@ -109,7 +117,7 @@ export default function FinanceApp() {
     if (filterPeriod === 'all') return true;
     
     const rawDate = t.timestamp || t.Timestamp;
-    if (!rawDate) return true; // Fallback jika format data lama tidak ada kolom timestamp
+    if (!rawDate) return true;
 
     const txDate = new Date(rawDate);
     const today = new Date();
@@ -128,10 +136,25 @@ export default function FinanceApp() {
     if (filterPeriod === 'this_year') {
       return txDate.getFullYear() === today.getFullYear();
     }
+    
+    // Logika Filter Custom Tanggal & Rentang
+    if (filterPeriod === 'custom') {
+      if (!startDate) return true; // Jika user belum pilih tanggal, tampilkan semua sementara
+      
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+
+      // Jika endDate kosong, filter hanya 1 hari (sesuai startDate)
+      const end = endDate ? new Date(endDate) : new Date(startDate);
+      end.setHours(23, 59, 59, 999);
+
+      return txDate >= start && txDate <= end;
+    }
+    
     return true;
   });
 
-  // --- LOGIKA DASHBOARD (Kalkulasi dari data yang sudah difilter) ---
+  // --- LOGIKA DASHBOARD ---
   const expenses = filteredTransactions.filter(t => (t.type || t.Type) === 'outcome');
   const totalOutcome = expenses.reduce((sum, t) => sum + Number(t.amount || t.Amount || 0), 0);
   const totalIncome = filteredTransactions.filter(t => (t.type || t.Type) === 'income')
@@ -150,18 +173,36 @@ export default function FinanceApp() {
   }, []).sort((a, b) => b.value - a.value);
 
 
-  if (!isAuth) {
+if (!isAuth) {
     return (
       <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4 font-sans">
+        {/* Kita kembalikan ke <form> agar keyboard HP jalan normal */}
         <form onSubmit={handleLogin} className="w-full max-w-xs bg-[#111111] border border-gray-800 rounded-2xl shadow-2xl p-6 space-y-4">
           <h1 className="text-xl font-bold text-white text-center">Gembok Aplikasi</h1>
+          
           <input 
-            type="password" inputMode="numeric" placeholder="Masukkan PIN" 
-            value={pinInput} onChange={(e) => setPinInput(e.target.value)} 
+            type="password" 
+            inputMode="numeric" 
+            placeholder="Masukkan PIN" 
+            value={pinInput} 
+            onChange={(e) => setPinInput(e.target.value)} 
             className="w-full px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-xl text-center text-white tracking-widest focus:outline-none focus:border-blue-500" 
-            autoFocus required 
+            autoFocus 
           />
-          <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition-all">Buka</button>
+          
+          {/* Teks error akan muncul di sini kalau PIN salah */}
+          {loginError && (
+            <p className="text-red-500 text-sm text-center animate-in fade-in zoom-in duration-300">
+              {loginError}
+            </p>
+          )}
+          
+          <button 
+            type="submit" 
+            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition-all"
+          >
+            Buka
+          </button>
         </form>
       </main>
     );
@@ -204,14 +245,34 @@ export default function FinanceApp() {
                 </select>
               </div>
 
-              {/* SMART INPUT NOMINAL */}
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-400 ml-1">Nominal (Bisa hitung +, -, *, /)</label>
+           {/* SMART INPUT NOMINAL DENGAN QUICK OPERATORS */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-end mb-1">
+                  <label className="text-xs font-medium text-gray-400 ml-1">Nominal</label>
+                  {/* Tombol Kalkulator Bantuan */}
+                <div className="flex space-x-1.5">
+                    {['+', '-', '*', '/'].map((op) => (
+                      <button 
+                        key={op} type="button" 
+                        // DUA BARIS INI KUNCI AJAIBNYA:
+                        onPointerDown={(e) => e.preventDefault()} 
+                        onClick={() => setAmount(prev => prev + op)}
+                        className="bg-[#2a2a2a] border border-gray-700 text-gray-300 px-3 py-0.5 rounded-md text-sm font-mono hover:bg-gray-600 active:bg-gray-500 transition-colors"
+                      >
+                        {op}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">Rp</span>
                   <input 
-                    type="text" inputMode="text" placeholder="Misal: 15000+25000" 
-                    value={amount} onChange={(e) => setAmount(e.target.value)} onBlur={handleAmountBlur} 
+                    type="text" 
+                    inputMode="decimal" 
+                    placeholder="Hitung manual & tap tombol di atas" 
+                    value={amount} 
+                    onChange={(e) => setAmount(e.target.value)} 
+                    onBlur={handleAmountBlur} 
                     className="w-full pl-10 pr-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-xl focus:outline-none focus:border-blue-500" required 
                   />
                 </div>
@@ -331,20 +392,47 @@ export default function FinanceApp() {
                 </div>
               ) : (
                 <>
-                  {/* DROPDOWN FILTER WAKTU */}
-                  <div className="flex justify-between items-center mb-2">
-                    <h2 className="text-sm font-semibold text-gray-300">Ringkasan Arus Kas</h2>
-                    <select 
-                      value={filterPeriod} 
-                      onChange={(e) => setFilterPeriod(e.target.value)}
-                      className="bg-[#1a1a1a] border border-gray-700 text-xs rounded-lg px-3 py-1.5 text-gray-300 focus:outline-none focus:border-blue-500 cursor-pointer"
-                    >
-                      <option value="today">Hari Ini</option>
-                      <option value="this_week">7 Hari Terakhir</option>
-                      <option value="this_month">Bulan Ini</option>
-                      <option value="this_year">Tahun Ini</option>
-                      <option value="all">Semua Waktu</option>
-                    </select>
+                  {/* DROPDOWN & CUSTOM DATE FILTER */}
+                  <div className="flex flex-col mb-2">
+                    <div className="flex justify-between items-center">
+                      <h2 className="text-sm font-semibold text-gray-300">Ringkasan Arus Kas</h2>
+                      <select 
+                        value={filterPeriod} 
+                        onChange={(e) => {
+                          setFilterPeriod(e.target.value);
+                          if(e.target.value !== 'custom') {
+                            setStartDate(''); setEndDate('');
+                          }
+                        }}
+                        className="bg-[#1a1a1a] border border-gray-700 text-xs rounded-lg px-3 py-1.5 text-gray-300 focus:outline-none focus:border-blue-500 cursor-pointer"
+                      >
+                        <option value="today">Hari Ini</option>
+                        <option value="this_week">7 Hari Terakhir</option>
+                        <option value="this_month">Bulan Ini</option>
+                        <option value="this_year">Tahun Ini</option>
+                        <option value="all">Semua Waktu</option>
+                        <option value="custom">Pilih Tanggal...</option>
+                      </select>
+                    </div>
+
+                    {/* Input Tanggal (Muncul kalau Pilih Tanggal di-klik) */}
+                    {filterPeriod === 'custom' && (
+                      <div className="flex items-center space-x-2 mt-3 bg-[#1a1a1a] p-2 rounded-lg border border-gray-800 animate-in fade-in zoom-in duration-200">
+                        <input 
+                          type="date" 
+                          value={startDate} 
+                          onChange={(e) => setStartDate(e.target.value)} 
+                          className="flex-1 bg-transparent text-xs text-gray-300 focus:outline-none"
+                        />
+                        <span className="text-gray-500 text-xs">s/d</span>
+                        <input 
+                          type="date" 
+                          value={endDate} 
+                          onChange={(e) => setEndDate(e.target.value)} 
+                          className="flex-1 bg-transparent text-xs text-gray-300 focus:outline-none"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -376,11 +464,11 @@ export default function FinanceApp() {
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                               ))}
                             </Pie>
-                      	    <Tooltip 
- 				formatter={(value: any) => `Rp ${Number(value).toLocaleString('id-ID')}`}
- 				contentStyle={{ backgroundColor: '#111', borderColor: '#333', borderRadius: '8px', color: '#fff' }}
- 				itemStyle={{ color: '#fff' }}
-			    />
+                            <Tooltip 
+                              formatter={(value: any) => `Rp ${Number(value).toLocaleString('id-ID')}`}
+                              contentStyle={{ backgroundColor: '#111', borderColor: '#333', borderRadius: '8px', color: '#fff' }}
+                              itemStyle={{ color: '#fff' }}
+                            />
                             <Legend wrapperStyle={{ fontSize: '12px', color: '#ccc' }} />
                           </PieChart>
                         </ResponsiveContainer>
