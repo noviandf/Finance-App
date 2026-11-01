@@ -3,13 +3,11 @@ import { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export default function FinanceApp() {
-  // State Autentikasi
   const [isAuth, setIsAuth] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [activeTab, setActiveTab] = useState('input');
   const [loginError, setLoginError] = useState('');
 
-  // State Form Transaksi
   const [type, setType] = useState('outcome');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
@@ -18,12 +16,9 @@ export default function FinanceApp() {
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState('');
 
-  // State Dashboard Data
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [accounts, setAccounts] = useState<any[]>([]); // State baru untuk Kartu Saldo
   const [isLoadingData, setIsLoadingData] = useState(false);
   
-  // State Filter Waktu
   const [filterPeriod, setFilterPeriod] = useState('this_month');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -35,9 +30,7 @@ export default function FinanceApp() {
     e.preventDefault();
     setLoginError('');
     const validPin = process.env.NEXT_PUBLIC_APP_PIN?.trim();
-    const inputPin = pinInput.trim();
-    
-    if (inputPin === validPin) {
+    if (pinInput.trim() === validPin) {
       setIsAuth(true);
       fetchData(); 
     } else {
@@ -46,20 +39,13 @@ export default function FinanceApp() {
     }
   };
 
-  // Fungsi Fetch yang Diperbarui untuk mengambil Transaksi dan Saldo
   const fetchData = async () => {
     setIsLoadingData(true);
     try {
-      // Fetch Transaksi
-      const txRes = await fetch(`${GAS_URL}?action=transactions&limit=100`, { cache: 'no-store' });
+      // Hanya butuh narik transaksi, memangkas waktu loading 50%
+      const txRes = await fetch(`${GAS_URL}?action=transactions&limit=150`, { cache: 'no-store' });
       const txResult = await txRes.json();
       if (txResult.status === 200) setTransactions(txResult.data);
-
-      // Fetch Saldo Akun
-      const accRes = await fetch(`${GAS_URL}?action=accounts`, { cache: 'no-store' });
-      const accResult = await accRes.json();
-      if (accResult.status === 200) setAccounts(accResult.data);
-
     } catch (error) {
       console.error("Gagal menarik data:", error);
     } finally {
@@ -110,9 +96,9 @@ export default function FinanceApp() {
     }
   };
 
+  // --- 1. FILTER TRANSAKSI UTAMA ---
   const filteredTransactions = transactions.filter(t => {
     if (filterPeriod === 'all') return true;
-    
     const rawDate = t.Timestamp || t.timestamp;
     if (!rawDate) return true;
 
@@ -144,6 +130,16 @@ export default function FinanceApp() {
     return true;
   });
 
+  // --- 2. KALKULASI MINUS (PENGELUARAN) PER AKUN BERDASARKAN FILTER ---
+  const expensesByAccountFiltered = filteredTransactions
+    .filter(t => (t.Type || t.type) === 'outcome')
+    .reduce((acc: any, curr) => {
+      const accName = curr.Account_From || curr.account_from || 'Lainnya';
+      const amt = Number(curr.Amount || curr.amount || 0);
+      acc[accName] = (acc[accName] || 0) + amt;
+      return acc;
+    }, {});
+
   const expenses = filteredTransactions.filter(t => (t.Type || t.type) === 'outcome');
   const totalOutcome = expenses.reduce((sum, t) => sum + Number(t.Amount || t.amount || 0), 0);
   const totalIncome = filteredTransactions.filter(t => (t.Type || t.type) === 'income')
@@ -153,14 +149,10 @@ export default function FinanceApp() {
     const catName = curr.Category || curr.category || 'Lain-lain';
     const amt = Number(curr.Amount || curr.amount || 0);
     const existing = acc.find(item => item.name === catName);
-    if (existing) {
-      existing.value += amt;
-    } else {
-      acc.push({ name: catName, value: amt });
-    }
+    if (existing) existing.value += amt;
+    else acc.push({ name: catName, value: amt });
     return acc;
   }, []).sort((a, b) => b.value - a.value);
-
 
   if (!isAuth) {
     return (
@@ -184,7 +176,6 @@ export default function FinanceApp() {
     <main className="min-h-screen bg-[#0a0a0a] flex flex-col items-center p-4 font-sans text-white pb-20">
       <div className="w-full max-w-md bg-[#111111] border border-gray-800 rounded-2xl shadow-2xl overflow-hidden mt-4">
         
-        {/* NAVIGASI TAB */}
         <div className="flex border-b border-gray-800">
           <button onClick={() => setActiveTab('input')} className={`flex-1 py-4 text-sm font-semibold transition-colors ${activeTab === 'input' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-500 hover:text-gray-300'}`}>Catat Transaksi</button>
           <button onClick={() => setActiveTab('dashboard')} className={`flex-1 py-4 text-sm font-semibold transition-colors ${activeTab === 'dashboard' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-500 hover:text-gray-300'}`}>Ringkasan</button>
@@ -315,25 +306,10 @@ export default function FinanceApp() {
                 </div>
               ) : (
                 <>
-                  {/* --- KARTU SALDO SUMBER DANA --- */}
-                  <div className="bg-[#1a1a1a] border border-gray-800 p-4 rounded-xl">
-                     <h3 className="text-sm font-semibold text-gray-300 mb-3">Saldo Akun</h3>
-                     <div className="grid grid-cols-2 gap-3 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
-                        {accounts.map((acc, idx) => (
-                           <div key={idx} className="bg-[#111111] p-3 rounded-lg border border-gray-800">
-                              <p className="text-[10px] text-gray-500 uppercase tracking-wider">{acc.Account_Name}</p>
-                              <p className={`text-sm font-bold ${Number(acc.Current_Balance) < 0 ? 'text-red-400' : 'text-gray-200'}`}>
-                                 Rp {new Intl.NumberFormat('id-ID').format(acc.Current_Balance || 0)}
-                              </p>
-                           </div>
-                        ))}
-                     </div>
-                  </div>
-
-                  {/* DROPDOWN FILTER WAKTU */}
+                  {/* DROPDOWN FILTER WAKTU (Pindah Ke Paling Atas agar jelas fungsinya) */}
                   <div className="flex flex-col mb-2">
                     <div className="flex justify-between items-center">
-                      <h2 className="text-sm font-semibold text-gray-300">Ringkasan Arus Kas</h2>
+                      <h2 className="text-sm font-semibold text-gray-300">Filter Riwayat</h2>
                       <select value={filterPeriod} onChange={(e) => {
                           setFilterPeriod(e.target.value);
                           if(e.target.value !== 'custom') { setStartDate(''); setEndDate(''); }
@@ -356,13 +332,34 @@ export default function FinanceApp() {
                     )}
                   </div>
 
+                  {/* --- KARTU MINUS/PENGELUARAN AKUN (Reaktif Terhadap Filter) --- */}
+                  <div className="bg-[#1a1a1a] border border-gray-800 p-4 rounded-xl">
+                     <h3 className="text-sm font-semibold text-gray-300 mb-3">Minus per Akun</h3>
+                     <div className="grid grid-cols-2 gap-3 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                        {Object.keys(expensesByAccountFiltered).length === 0 ? (
+                           <p className="text-xs text-gray-500 col-span-2 py-2">Tidak ada pengeluaran di periode ini.</p>
+                        ) : (
+                           Object.entries(expensesByAccountFiltered)
+                              .sort((a: any, b: any) => b[1] - a[1]) // Urutkan minus terbesar
+                              .map(([accName, total]: any, idx) => (
+                              <div key={idx} className="bg-[#111111] p-3 rounded-lg border border-red-900/50 flex flex-col justify-between">
+                                 <p className="text-[10px] text-gray-500 uppercase tracking-wider">{accName}</p>
+                                 <p className="text-sm font-bold text-red-500 mt-1">
+                                    - Rp {new Intl.NumberFormat('id-ID').format(total)}
+                                 </p>
+                              </div>
+                           ))
+                        )}
+                     </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-[#1a1a1a] border border-gray-800 p-4 rounded-xl">
-                      <p className="text-xs text-gray-400 font-medium mb-1">Pengeluaran</p>
+                      <p className="text-xs text-gray-400 font-medium mb-1">Total Pengeluaran</p>
                       <h3 className="text-lg font-bold text-red-500">Rp {totalOutcome.toLocaleString('id-ID')}</h3>
                     </div>
                     <div className="bg-[#1a1a1a] border border-gray-800 p-4 rounded-xl">
-                      <p className="text-xs text-gray-400 font-medium mb-1">Pemasukan</p>
+                      <p className="text-xs text-gray-400 font-medium mb-1">Total Pemasukan</p>
                       <h3 className="text-lg font-bold text-green-500">Rp {totalIncome.toLocaleString('id-ID')}</h3>
                     </div>
                   </div>
@@ -397,20 +394,25 @@ export default function FinanceApp() {
                               <p className="text-xs text-center text-gray-500 py-4">Tidak ada transaksi.</p>
                            ) : (
                               filteredTransactions.map((tx, idx) => {
-                                 const isIncome = tx.Type === 'income';
-                                 const isOutcome = tx.Type === 'outcome';
-                                 const isTransfer = tx.Type === 'transfer';
-                                 const route = isTransfer ? `${tx.Account_From} → ${tx.Account_To}` : isIncome ? tx.Account_To : tx.Account_From;
+                                 const isIncome = tx.Type === 'income' || tx.type === 'income';
+                                 const isOutcome = tx.Type === 'outcome' || tx.type === 'outcome';
+                                 const isTransfer = tx.Type === 'transfer' || tx.type === 'transfer';
+                                 
+                                 const accFrom = tx.Account_From || tx.account_from;
+                                 const accTo = tx.Account_To || tx.account_to;
+                                 const route = isTransfer ? `${accFrom} → ${accTo}` : isIncome ? accTo : accFrom;
                                  
                                  return (
                                     <div key={idx} className="flex justify-between items-center p-3 bg-[#111111] rounded-lg border border-gray-800">
                                        <div className="flex-1 overflow-hidden pr-2">
-                                          <p className="text-xs font-semibold text-gray-200 truncate">{tx.Category}</p>
-                                          <p className="text-[10px] text-gray-500 truncate">{new Date(tx.Timestamp).toLocaleDateString('id-ID')} • {route}</p>
-                                          {tx.Notes && tx.Notes !== "-" && <p className="text-[10px] text-gray-600 truncate mt-0.5 italic">{tx.Notes}</p>}
+                                          <p className="text-xs font-semibold text-gray-200 truncate">{tx.Category || tx.category}</p>
+                                          <p className="text-[10px] text-gray-500 truncate">{new Date(tx.Timestamp || tx.timestamp).toLocaleDateString('id-ID')} • {route}</p>
+                                          {(tx.Notes || tx.notes) && (tx.Notes || tx.notes) !== "-" && (
+                                            <p className="text-[10px] text-gray-600 truncate mt-0.5 italic">{tx.Notes || tx.notes}</p>
+                                          )}
                                        </div>
                                        <div className={`text-sm font-bold whitespace-nowrap ${isIncome ? 'text-green-500' : isOutcome ? 'text-red-500' : 'text-gray-300'}`}>
-                                          {isIncome ? '+' : isOutcome ? '-' : ''}{Number(tx.Amount).toLocaleString('id-ID')}
+                                          {isIncome ? '+' : isOutcome ? '-' : ''}{Number(tx.Amount || tx.amount).toLocaleString('id-ID')}
                                        </div>
                                     </div>
                                  )
