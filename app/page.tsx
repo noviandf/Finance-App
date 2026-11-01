@@ -1,6 +1,6 @@
 import React from 'react';
 
-// Pastikan variabel NEXT_PUBLIC_GAS_URL sudah diatur di Vercel Settings > Environment Variables
+export const dynamic = 'force-dynamic';
 const GAS_URL = process.env.NEXT_PUBLIC_GAS_URL || "";
 
 // --- SERVICE PENGAMBILAN DATA ---
