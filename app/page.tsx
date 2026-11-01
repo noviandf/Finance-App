@@ -12,7 +12,7 @@ async function getAccounts() {
     return await res.json();
   } catch (error) {
     console.error("Gagal memuat saldo:", error);
-    return { data: [] }; // Fallback array kosong agar map() tidak crash
+    return { data: [] }; 
   }
 }
 
@@ -30,9 +30,8 @@ async function getTransactions(limit = 100) {
 
 // --- KOMPONEN UI (SERVER COMPONENT) ---
 export default async function DashboardPage() {
-  // Menjalankan fetch secara berurutan di sisi server
   const accountsResponse = await getAccounts();
-  const transactionsResponse = await getTransactions(50); // Mengambil 50 transaksi terbaru
+  const transactionsResponse = await getTransactions(50); 
 
   const accounts = accountsResponse?.data || [];
   const transactions = transactionsResponse?.data || [];
@@ -59,10 +58,12 @@ export default async function DashboardPage() {
               {accounts.map((acc: any, index: number) => (
                 <div key={index} className="p-5 border border-gray-200 rounded-xl shadow-sm bg-white hover:shadow-md transition-shadow">
                   <h3 className="font-semibold text-gray-500 uppercase tracking-wider text-sm mb-1">
-                    {acc.Account || 'Akun Tidak Dikenal'}
+                    {/* Disesuaikan dengan header sheet Accounts */}
+                    {acc.Account_Name || 'Akun Tidak Dikenal'}
                   </h3>
                   <p className="text-2xl font-bold text-gray-900">
-                    Rp {new Intl.NumberFormat('id-ID').format(acc.Balance || 0)}
+                    {/* Disesuaikan dengan header sheet Accounts */}
+                    Rp {new Intl.NumberFormat('id-ID').format(acc.Current_Balance || 0)}
                   </p>
                 </div>
               ))}
@@ -93,24 +94,24 @@ export default async function DashboardPage() {
                     </tr>
                   ) : (
                     transactions.map((tx: any) => {
-                      const isIncome = tx.type === 'income';
-                      const isOutcome = tx.type === 'outcome';
-                      const isTransfer = tx.type === 'transfer';
+                      // Disesuaikan dengan header sheet Transactions (Huruf kapital)
+                      const isIncome = tx.Type === 'income';
+                      const isOutcome = tx.Type === 'outcome';
+                      const isTransfer = tx.Type === 'transfer';
                       
-                      // Menentukan rute akun untuk ditampilkan di kolom "Sumber/Tujuan"
                       const routeText = isTransfer 
-                        ? `${tx.account_from} → ${tx.account_to}` 
-                        : isIncome ? tx.account_to : tx.account_from;
+                        ? `${tx.Account_From} → ${tx.Account_To}` 
+                        : isIncome ? tx.Account_To : tx.Account_From;
 
                       return (
-                        <tr key={tx.id} className="hover:bg-gray-50 transition-colors">
+                        <tr key={tx.ID} className="hover:bg-gray-50 transition-colors">
                           <td className="p-4 text-sm text-gray-700">
-                            {tx.timestamp ? new Date(tx.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                            {tx.Timestamp ? new Date(tx.Timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                           </td>
                           <td className="p-4 text-sm text-gray-900 font-medium">
-                            {tx.category || '-'}
-                            {tx.notes && tx.notes !== "-" && (
-                              <span className="block text-xs text-gray-500 font-normal mt-0.5">{tx.notes}</span>
+                            {tx.Category || '-'}
+                            {tx.Notes && tx.Notes !== "-" && (
+                              <span className="block text-xs text-gray-500 font-normal mt-0.5">{tx.Notes}</span>
                             )}
                           </td>
                           <td className="p-4 text-sm text-gray-600">
@@ -122,7 +123,7 @@ export default async function DashboardPage() {
                             'text-gray-800'
                           }`}>
                             {isIncome ? '+' : isOutcome ? '-' : ''}
-                            Rp {new Intl.NumberFormat('id-ID').format(tx.amount || 0)}
+                            Rp {new Intl.NumberFormat('id-ID').format(tx.Amount || 0)}
                           </td>
                         </tr>
                       );
