@@ -39,13 +39,16 @@ export default function FinanceApp() {
     }
   };
 
+  // Menggunakan useEffect agar fetch berjalan aman di browser (Client-side)
   const fetchData = async () => {
+    if (!GAS_URL) return;
     setIsLoadingData(true);
     try {
-      // Hanya butuh narik transaksi, memangkas waktu loading 50%
       const txRes = await fetch(`${GAS_URL}?action=transactions&limit=150`, { cache: 'no-store' });
       const txResult = await txRes.json();
-      if (txResult.status === 200) setTransactions(txResult.data);
+      if (txResult.status === 200) {
+        setTransactions(txResult.data);
+      }
     } catch (error) {
       console.error("Gagal menarik data:", error);
     } finally {
@@ -79,7 +82,7 @@ export default function FinanceApp() {
     try {
       const response = await fetch(GAS_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'text-plain;charset=utf-8' },
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload)
       });
       const result = await response.json(); 
@@ -96,7 +99,7 @@ export default function FinanceApp() {
     }
   };
 
-  // --- 1. FILTER TRANSAKSI UTAMA ---
+  // --- FILTER TRANSAKSI UTAMA ---
   const filteredTransactions = transactions.filter(t => {
     if (filterPeriod === 'all') return true;
     const rawDate = t.Timestamp || t.timestamp;
@@ -130,7 +133,7 @@ export default function FinanceApp() {
     return true;
   });
 
-  // --- 2. KALKULASI MINUS (PENGELUARAN) PER AKUN BERDASARKAN FILTER ---
+  // --- KALKULASI MINUS (PENGELUARAN) PER AKUN BERDASARKAN FILTER ---
   const expensesByAccountFiltered = filteredTransactions
     .filter(t => (t.Type || t.type) === 'outcome')
     .reduce((acc: any, curr) => {
@@ -306,7 +309,6 @@ export default function FinanceApp() {
                 </div>
               ) : (
                 <>
-                  {/* DROPDOWN FILTER WAKTU (Pindah Ke Paling Atas agar jelas fungsinya) */}
                   <div className="flex flex-col mb-2">
                     <div className="flex justify-between items-center">
                       <h2 className="text-sm font-semibold text-gray-300">Filter Riwayat</h2>
@@ -340,7 +342,7 @@ export default function FinanceApp() {
                            <p className="text-xs text-gray-500 col-span-2 py-2">Tidak ada pengeluaran di periode ini.</p>
                         ) : (
                            Object.entries(expensesByAccountFiltered)
-                              .sort((a: any, b: any) => b[1] - a[1]) // Urutkan minus terbesar
+                              .sort((a: any, b: any) => b[1] - a[1])
                               .map(([accName, total]: any, idx) => (
                               <div key={idx} className="bg-[#111111] p-3 rounded-lg border border-red-900/50 flex flex-col justify-between">
                                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">{accName}</p>
