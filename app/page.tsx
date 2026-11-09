@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
-// Helper untuk mengambil tanggal & jam lokal format YYYY-MM-DDTHH:mm (untuk input datetime-local)
 const getCurrentDateTimeLocal = () => {
   const now = new Date();
   const year = now.getFullYear();
@@ -19,8 +18,8 @@ export default function FinanceApp() {
   const [activeTab, setActiveTab] = useState('input');
   const [loginError, setLoginError] = useState('');
 
-  // State Form Transaksi (Termasuk State Tanggal)
-  const [transactionDate, setTransactionDate] = useState(getCurrentDateTimeLocal);
+  // Inisialisasi string kosong untuk menghindari error prerender Next.js 16
+  const [transactionDate, setTransactionDate] = useState('');
   const [type, setType] = useState('outcome');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
@@ -38,6 +37,11 @@ export default function FinanceApp() {
 
   const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef'];
   const GAS_URL = process.env.NEXT_PUBLIC_GAS_URL as string;
+
+  // Set tanggal default di sisi client setelah komponen mount
+  useEffect(() => {
+    setTransactionDate(getCurrentDateTimeLocal());
+  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +93,6 @@ export default function FinanceApp() {
     setStatus('Menyimpan...');
     
     const finalAmount = calculateAmount(amount);
-    // Payload menyertakan timestamp dari input form
     const payload = { 
       type, 
       amount: finalAmount, 
@@ -97,7 +100,7 @@ export default function FinanceApp() {
       account_from: accountFrom, 
       account_to: accountTo, 
       notes,
-      timestamp: transactionDate 
+      timestamp: transactionDate || getCurrentDateTimeLocal()
     };
 
     try {
@@ -111,7 +114,7 @@ export default function FinanceApp() {
         setStatus('✅ Berhasil disimpan!');
         setAmount(''); 
         setNotes('');
-        setTransactionDate(getCurrentDateTimeLocal()); // Reset ke waktu terkini
+        setTransactionDate(getCurrentDateTimeLocal());
         fetchData(); 
         setTimeout(() => setStatus(''), 3000);
       } else {
@@ -122,7 +125,6 @@ export default function FinanceApp() {
     }
   };
 
-  // --- FILTER TRANSAKSI UTAMA ---
   const filteredTransactions = transactions.filter(t => {
     if (filterPeriod === 'all') return true;
     const rawDate = t.Timestamp || t.timestamp;
@@ -156,7 +158,6 @@ export default function FinanceApp() {
     return true;
   });
 
-  // --- KALKULASI MINUS (PENGELUARAN) PER AKUN BERDASARKAN FILTER ---
   const expensesByAccountFiltered = filteredTransactions
     .filter(t => (t.Type || t.type) === 'outcome')
     .reduce((acc: any, curr) => {
@@ -213,7 +214,6 @@ export default function FinanceApp() {
           {activeTab === 'input' && (
             <form onSubmit={handleSubmit} className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
               
-              {/* INPUT TANGGAL & WAKTU (DEFAULT HARI INI JAM INI) */}
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-400 ml-1">Waktu Transaksi</label>
                 <input 
@@ -370,7 +370,6 @@ export default function FinanceApp() {
                     )}
                   </div>
 
-                  {/* KARTU MINUS/PENGELUARAN AKUN */}
                   <div className="bg-[#1a1a1a] border border-gray-800 p-4 rounded-xl">
                      <h3 className="text-sm font-semibold text-gray-300 mb-3">Minus per Akun</h3>
                      <div className="grid grid-cols-2 gap-3 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
@@ -423,7 +422,6 @@ export default function FinanceApp() {
                     )}
                   </div>
 
-                  {/* TABEL RIWAYAT TRANSAKSI */}
                   <div className="bg-[#1a1a1a] border border-gray-800 p-4 rounded-xl">
                      <h3 className="text-sm font-semibold text-gray-300 mb-3">Riwayat Transaksi</h3>
                      <div className="max-h-60 overflow-y-auto pr-1 custom-scrollbar">
