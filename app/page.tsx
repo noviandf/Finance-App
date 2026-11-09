@@ -2,12 +2,25 @@
 import { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
+// Helper untuk mengambil tanggal & jam lokal format YYYY-MM-DDTHH:mm (untuk input datetime-local)
+const getCurrentDateTimeLocal = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 export default function FinanceApp() {
   const [isAuth, setIsAuth] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [activeTab, setActiveTab] = useState('input');
   const [loginError, setLoginError] = useState('');
 
+  // State Form Transaksi (Termasuk State Tanggal)
+  const [transactionDate, setTransactionDate] = useState(getCurrentDateTimeLocal);
   const [type, setType] = useState('outcome');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
@@ -39,7 +52,6 @@ export default function FinanceApp() {
     }
   };
 
-  // Menggunakan useEffect agar fetch berjalan aman di browser (Client-side)
   const fetchData = async () => {
     if (!GAS_URL) return;
     setIsLoadingData(true);
@@ -77,7 +89,16 @@ export default function FinanceApp() {
     setStatus('Menyimpan...');
     
     const finalAmount = calculateAmount(amount);
-    const payload = { type, amount: finalAmount, category, account_from: accountFrom, account_to: accountTo, notes };
+    // Payload menyertakan timestamp dari input form
+    const payload = { 
+      type, 
+      amount: finalAmount, 
+      category, 
+      account_from: accountFrom, 
+      account_to: accountTo, 
+      notes,
+      timestamp: transactionDate 
+    };
 
     try {
       const response = await fetch(GAS_URL, {
@@ -88,7 +109,9 @@ export default function FinanceApp() {
       const result = await response.json(); 
       if (result.status === 200) {
         setStatus('✅ Berhasil disimpan!');
-        setAmount(''); setNotes('');
+        setAmount(''); 
+        setNotes('');
+        setTransactionDate(getCurrentDateTimeLocal()); // Reset ke waktu terkini
         fetchData(); 
         setTimeout(() => setStatus(''), 3000);
       } else {
@@ -189,6 +212,19 @@ export default function FinanceApp() {
           {/* TAB 1: INPUT */}
           {activeTab === 'input' && (
             <form onSubmit={handleSubmit} className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              
+              {/* INPUT TANGGAL & WAKTU (DEFAULT HARI INI JAM INI) */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-400 ml-1">Waktu Transaksi</label>
+                <input 
+                  type="datetime-local" 
+                  value={transactionDate} 
+                  onChange={(e) => setTransactionDate(e.target.value)} 
+                  className="w-full px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-xl text-gray-200 focus:outline-none focus:border-blue-500 text-sm"
+                  required 
+                />
+              </div>
+
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-400 ml-1">Jenis Transaksi</label>
                 <select value={type} onChange={(e) => setType(e.target.value)} className="w-full px-4 py-3 bg-[#1a1a1a] border border-gray-700 rounded-xl focus:outline-none focus:border-blue-500 appearance-none">
@@ -334,7 +370,7 @@ export default function FinanceApp() {
                     )}
                   </div>
 
-                  {/* --- KARTU MINUS/PENGELUARAN AKUN (Reaktif Terhadap Filter) --- */}
+                  {/* KARTU MINUS/PENGELUARAN AKUN */}
                   <div className="bg-[#1a1a1a] border border-gray-800 p-4 rounded-xl">
                      <h3 className="text-sm font-semibold text-gray-300 mb-3">Minus per Akun</h3>
                      <div className="grid grid-cols-2 gap-3 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
@@ -387,7 +423,7 @@ export default function FinanceApp() {
                     )}
                   </div>
 
-                  {/* --- TABEL RIWAYAT TRANSAKSI --- */}
+                  {/* TABEL RIWAYAT TRANSAKSI */}
                   <div className="bg-[#1a1a1a] border border-gray-800 p-4 rounded-xl">
                      <h3 className="text-sm font-semibold text-gray-300 mb-3">Riwayat Transaksi</h3>
                      <div className="max-h-60 overflow-y-auto pr-1 custom-scrollbar">
